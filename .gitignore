@@ -1,6 +1,11 @@
 # Compiled class file
 *.class
-
+*.project
+*.classpath
+*.settings
+/.project
+/.settings/org.eclipse.m2e.core.prefs
+**/target/*
 # Log file
 *.log
 

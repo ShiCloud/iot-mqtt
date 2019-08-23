@@ -1,0 +1,1 @@
+java -cp $(dirname "$PWD")/iot-mqtt-test-1.0-jar-with-dependencies.jar org.iot.mqtt.test.MqttSysTest  $(dirname "$PWD")/config/test.properties
