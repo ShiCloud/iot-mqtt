@@ -1,6 +1,6 @@
 # iot-mqtt
 # Release 1.0
-本项目完全借鉴jmqtt项目https://github.com/Cicizz/jmqtt  
+本项目完全基于jmqtt项目https://github.com/Cicizz/jmqtt 修改。 
 目前只是对部分代码进行了梳理重构。去除了集群部分。 
 修正了一些bug。并加入简单的$SYS/实现 
 后期会加入原创的集群的实现。  
