@@ -11,16 +11,20 @@
 - cd release/bin目录 执行相应方法 ，相关配置在config目录下。
   1. server启动broker，默认1883端口，用户名admin密码123456。
   2. subscribe_test启动接受服务，默认监听/QOS0,/QOS1,/QOS2,三个主题。
-  3. send_test启动发送服务，向/QOS0,/QOS1,/QOS2三个主题,并发1000个线程发送消息,共200万个消息。
+  3. send_test启动发送服务，向/QOS0,/QOS1,/QOS2三个主题,并发1000个线程发送消息。
   4. subscribe_sys启动监控服务，默认监听$SYS/主题.并显示当前所有client信息，包含每个client 接受消息数，发送消息数，关注的主题，等信息。
-# 性能测试 
-# 阿里ECS 16核 64内存 1t硬盘 未作任何优化
-
-
-client id ---   每client id topic --- 每个topic发送 ---  每条数据时间间隔   总数据量 ---               耗时 ---
-  1000个             5个                 10000条           1000ms         1000x5x10000 = 5千万个
-
   
+## 性能测试 
+## 阿里ECS 16核 64内存 1t硬盘 未作任何优化
+### client id --- 1000个  
+### 每client id topic --- 5个
+### 每个topic发送 ---  10000条
+### 每条数据时间间隔   --- 1000ms 
+### 总数据量 ---  1000x5x10000 = 5千万个          
+### 耗时 --- 10000000s
+
+                                                
+![5000万条性能测试](https://github.com/ShiCloud/iot-mqtt/blob/master/5%E5%8D%83%E4%B8%87.png) 
   
   
 ![欢迎大家一起交流](https://github.com/ShiCloud/iot-mqtt/blob/master/iot-mqtt%E7%BE%A4%E8%81%8A%E4%BA%8C%E7%BB%B4%E7%A0%81.png)
