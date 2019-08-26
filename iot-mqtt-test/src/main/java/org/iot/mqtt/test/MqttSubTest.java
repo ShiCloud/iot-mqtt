@@ -34,11 +34,10 @@ public class MqttSubTest extends MqttBaseHandler {
 		handler.init(properties, topics, "MqttSubTest", false);
 		logger.info("MqttSubTest testConn inited");
 		Thread.sleep(Integer.MAX_VALUE);
-		
 	}
 	
 	@Override
 	public void processInput(String msg) {
-		System.out.println(new String(ByteUtil.hexStr2Bytes(msg))+" count: "+count.getAndIncrement());
+		logger.info(new String(ByteUtil.hexStr2Bytes(msg))+" count: "+count.getAndIncrement());
 	}
 }

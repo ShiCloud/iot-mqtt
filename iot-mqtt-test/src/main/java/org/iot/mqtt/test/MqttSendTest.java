@@ -16,10 +16,23 @@ import org.slf4j.LoggerFactory;
 public class MqttSendTest extends MqttBaseHandler {
 	private static Logger logger = LoggerFactory.getLogger(MqttSendTest.class);
 
+	private static int poolSize = 1000;
+	private static int msgNums = 1000;
+	private static int sleepTimes = 100;
+	
 	public static void main(String[] args) throws Exception {
 		if(args.length == 0) {
 			logger.error("please set config path");
 			System.exit(-1);
+		}
+		if(args.length > 1) {
+			poolSize = Integer.valueOf(args[1]);
+		}
+		if(args.length > 2) {
+			msgNums = Integer.valueOf(args[2]);
+		}
+		if(args.length > 3) {
+			sleepTimes = Integer.valueOf(args[3]);
 		}
 		MqttSendTest handler = new MqttSendTest();
 		TestConfig properties = new TestConfig(args[0]);
@@ -31,16 +44,16 @@ public class MqttSendTest extends MqttBaseHandler {
 	
 	public void test(MqttSendTest handler) throws Exception {
 
-		int poolSize = 1000;
+		
 		ForkJoinPool forkJoinPool = new ForkJoinPool(poolSize);
 		ForkJoinTask<?>[] list = new ForkJoinTask[poolSize];
 		for (int i = 0; i < poolSize; i++) {
 			ForkJoinTask<?> fork = forkJoinPool.submit(new Thread(new Runnable() {
 				@Override
 				public void run() {
-					for (int i = 0; i < 2000; i++) {
+					for (int i = 0; i < msgNums; i++) {
 						try {
-							Thread.sleep(10);
+							Thread.sleep(sleepTimes);
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
@@ -55,6 +68,6 @@ public class MqttSendTest extends MqttBaseHandler {
 		for (int i = 0; i < poolSize; i++) {
 			list[i].join();
 		}
-		System.out.println("total time "+(System.currentTimeMillis() - start));
+		logger.info("total time "+(System.currentTimeMillis() - start));
 	}
 }

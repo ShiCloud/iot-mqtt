@@ -32,6 +32,8 @@ public class MqttSysTest extends MqttBaseHandler {
 	
 	@Override
 	public void processInput(String msg) {
-		logger.info(new String(ByteUtil.hexStr2Bytes(msg)));
+		String input = new String(ByteUtil.hexStr2Bytes(msg));
+		logger.debug(input);
+		System.out.println(input);
 	}
 }

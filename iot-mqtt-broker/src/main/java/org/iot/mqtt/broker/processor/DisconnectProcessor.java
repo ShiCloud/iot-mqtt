@@ -48,7 +48,7 @@ public class DisconnectProcessor implements RequestProcessor {
         sysMessageService.removeClient(clientId);
         ConnectManager.getInstance().removeClient(clientId);
         ctx.close();
-        log.warn("[DISCONNECT] -> {} clientId:{}",clientId);
+        log.warn("[DISCONNECT] -> clientId:{}",clientId);
     }
 
     private void clearSubscriptions(ClientSession clientSession){

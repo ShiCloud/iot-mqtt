@@ -25,7 +25,6 @@
 		<module>iot-mqtt-common</module>
 		<module>iot-mqtt-store</module>
 		<module>iot-mqtt-test</module>
-		<module>iot-mqtt-release</module>
 	</modules>
 
 	<properties>
