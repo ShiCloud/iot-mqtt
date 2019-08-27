@@ -1,6 +1,5 @@
 package org.iot.mqtt.handler;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
@@ -58,11 +57,11 @@ public class MqttBaseHandler implements MqttHandler {
 	}
 
 	public void processInput(byte[] msg) {
-		logger.info("MqttHandler processInput :" + msg);
+		logger.debug("MqttHandler processInput :" + msg);
 	};
 
 	public void processInput(String msg) {
-		logger.info("MqttHandler processInput :" + msg);
+		logger.debug("MqttHandler processInput :" + msg);
 	};
 
 	private CallbackConnection callbackConnection;
@@ -83,7 +82,7 @@ public class MqttBaseHandler implements MqttHandler {
 		try {
 			mqtt.setHost(this.properties.getUrl());
 		} catch (URISyntaxException ee) {
-			logger.info("init setHost failure ", ee);
+			logger.debug("init setHost failure ", ee);
 		}
 		mqtt.setUserName(this.properties.getUsername());
 		mqtt.setPassword(this.properties.getPassword());
@@ -118,12 +117,12 @@ public class MqttBaseHandler implements MqttHandler {
 		connectFuture.then(new Callback<Void>() {
 			@Override
 			public void onSuccess(Void value) {
-				logger.info("connect success");
+				logger.debug("connect success");
 			}
 
 			@Override
 			public void onFailure(Throwable value) {
-				logger.info("connect failure " + value);
+				logger.debug("connect failure " + value);
 			}
 		});
 		try {
@@ -134,22 +133,6 @@ public class MqttBaseHandler implements MqttHandler {
 		// 处理主题
 		subscribe(topics);
 
-		// 监听键盘事件推出
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					while (System.in.read() > 0) {
-						System.exit(0);
-					}
-
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-
-			}
-		}).start();
-
 		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -157,18 +140,18 @@ public class MqttBaseHandler implements MqttHandler {
 				disconnectFuture.then(new Callback<Void>() {
 					@Override
 					public void onSuccess(Void value) {
-						logger.info("shutdownHook success");
+						logger.debug("shutdownHook success");
 					}
 
 					@Override
 					public void onFailure(Throwable value) {
-						logger.info("shutdownHook failure " + value);
+						logger.debug("shutdownHook failure " + value);
 					}
 				});
 				try {
 					disconnectFuture.await();
 				} catch (Exception e) {
-					logger.info("disconnect failure ", e);
+					logger.debug("disconnect failure ", e);
 				}
 			}
 		}));
@@ -179,12 +162,12 @@ public class MqttBaseHandler implements MqttHandler {
 		publishFuture.then(new Callback<Void>() {
 			@Override
 			public void onSuccess(Void value) {
-				logger.info("send " + topic + " msg: " + new String(msg));
+				logger.debug("send " + topic + " msg: " + new String(msg));
 			}
 
 			@Override
 			public void onFailure(Throwable value) {
-				logger.info("send " + topic + " msg failure " + value);
+				logger.debug("send " + topic + " msg failure " + value);
 			}
 		});
 		try {
@@ -206,12 +189,12 @@ public class MqttBaseHandler implements MqttHandler {
 		subscribeFuture.then(new Callback<byte[]>() {
 			@Override
 			public void onSuccess(byte[] values) {
-				logger.info(className + " subscribe success");
+				logger.debug(className + " subscribe success");
 			}
 
 			@Override
 			public void onFailure(Throwable value) {
-				logger.info(className + " subscribe failure " + value);
+				logger.debug(className + " subscribe failure " + value);
 			}
 		});
 		try {
