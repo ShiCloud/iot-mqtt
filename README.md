@@ -21,8 +21,8 @@
 ### 每个topic发送 ---  10000条
 ### 每条数据时间间隔   --- 1000ms 
 ### 总数据量 ---  1000x5x10000 = 5千万个          
-### 平均耗时 --- 10286秒
-
+### 发送耗时 --- 10286秒
+### 接收耗时 --- 10320秒
 ![平均耗时](https://github.com/ShiCloud/iot-mqtt/blob/master/pic/%E5%8F%91%E9%80%81%E6%97%B6%E9%97%B4.png) 
                                                 
 ![资源占用](https://github.com/ShiCloud/iot-mqtt/blob/master/pic/5%E5%8D%83%E4%B8%87.png) 
