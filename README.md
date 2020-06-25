@@ -23,9 +23,10 @@
 ### 总数据量 ---  1000x5x10000 = 5千万个          
 ### 发送耗时 --- 10286秒
 ### 接收耗时 --- 10320秒
-![平均耗时](https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050491102-dfa411cb-977f-4d0f-9265-4e8099d8db32.png) 
-                                                
-![资源占用](https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050489475-bf1c5535-d68e-4304-8a68-ae020649a813.png) 
-  
-  
-![欢迎大家一起交流](https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050500510-b2821135-c8e0-4969-8417-97ab50bcc65f.png)
+平均耗时
+https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050491102-dfa411cb-977f-4d0f-9265-4e8099d8db32.png                                          
+资源占用
+https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050489475-bf1c5535-d68e-4304-8a68-ae020649a813.png  
+欢迎大家一起 交流qq群
+https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050500510-b2821135-c8e0-4969-8417-97ab50bcc65f.png
+
