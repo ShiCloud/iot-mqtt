@@ -5,10 +5,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import org.iot.mqtt.common.bean.Message;
+import org.iot.mqtt.common.utils.SerializeHelper;
 import org.iot.mqtt.store.OfflineMessageStore;
-import org.iot.mqtt.store.rocksdb.db.RDB;
-import org.iot.mqtt.store.rocksdb.db.RDBStorePrefix;
-import org.iot.mqtt.test.utils.SerializeHelper;
+import org.iot.mqtt.store.StorePrefix;
 import org.rocksdb.ColumnFamilyHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,12 +27,6 @@ public class RDBOfflineMessageStore implements OfflineMessageStore {
     }
 
     @Override
-
-    public boolean containOfflineMsg(String clientId) {
-        return true;
-    }
-
-    @Override
     public boolean addOfflineMessage(String clientId, Message message) {
         try{
             this.rdb.putAsync(columnFamilyHandle(),key(clientId,message.getMsgId()), SerializeHelper.serialize(message));
@@ -44,15 +37,6 @@ public class RDBOfflineMessageStore implements OfflineMessageStore {
         return false;
     }
 
-    @Override
-    public Collection<Message> getAllOfflineMessage(String clientId) {
-        Collection<byte[]> values = this.rdb.getByPrefix(columnFamilyHandle(),keyPrefix(clientId));
-        Collection<Message> offlineMessages = new ArrayList<>(values.size());
-        for(byte[] value : values){
-            offlineMessages.add(SerializeHelper.deserialize(value,Message.class));
-        }
-        return offlineMessages;
-    }
     
     @Override
     public Collection<Message> getOfflineMessage(String clientId,int nums) {
@@ -65,20 +49,21 @@ public class RDBOfflineMessageStore implements OfflineMessageStore {
     }
     
     @Override
-    public int getAllOfflineMessageCount(String clientId) {
-        return this.rdb.getCountByPrefix(columnFamilyHandle(),keyPrefix(clientId));
+    public Collection<Message> getReSendMsg(String clientId,int nums) {
+        return this.getOfflineMessage(clientId,nums);
     }
+    
 
     private byte[] keyPrefix(String clientId){
-        return (RDBStorePrefix.OFFLINE_MESSAGE + clientId).getBytes(Charset.forName("UTF-8"));
+        return (StorePrefix.OFFLINE_MESSAGE + clientId).getBytes(Charset.forName("UTF-8"));
     }
 
     private byte[] key(String clientId,int msgId){
-        return (RDBStorePrefix.OFFLINE_MESSAGE + clientId + msgId).getBytes(Charset.forName("UTF-8"));
+        return (StorePrefix.OFFLINE_MESSAGE + clientId + msgId).getBytes(Charset.forName("UTF-8"));
     }
 
 
     private ColumnFamilyHandle columnFamilyHandle(){
-        return this.rdb.getColumnFamilyHandle(RDBStorePrefix.OFFLINE_MESSAGE);
+        return this.rdb.getColumnFamilyHandle(StorePrefix.OFFLINE_MESSAGE);
     }
 }

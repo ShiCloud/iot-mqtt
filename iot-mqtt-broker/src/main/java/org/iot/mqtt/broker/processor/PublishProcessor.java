@@ -11,6 +11,7 @@ import org.iot.mqtt.broker.utils.MessageUtil;
 import org.iot.mqtt.broker.utils.NettyUtil;
 import org.iot.mqtt.common.bean.Message;
 import org.iot.mqtt.common.bean.MessageHeader;
+import org.iot.mqtt.common.config.MqttConfig;
 import org.iot.mqtt.store.FlowMessageStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,29 +26,34 @@ import io.netty.util.ReferenceCountUtil;
 public class PublishProcessor extends AbstractMessageProcessor implements RequestProcessor {
 	
     private Logger log = LoggerFactory.getLogger(PublishProcessor.class);
-
+    
     private FlowMessageStore flowMessageStore;
-
     private PubSubPermission pubSubPermission;
-
+    private ConnectManager connectManager;
+    private MqttConfig mqttConfig;
+    
     public PublishProcessor(BrokerRoom brokerRoom){
         super(brokerRoom.getMessageDispatcher(),brokerRoom.getRetainMessageStore());
         this.flowMessageStore = brokerRoom.getFlowMessageStore();
         this.pubSubPermission = brokerRoom.getPubSubPermission();
+        this.connectManager = brokerRoom.getConnectManager();
+        this.mqttConfig = brokerRoom.getMqttConfig();
     }
 
     @Override
     public void processRequest(ChannelHandlerContext ctx, MqttMessage mqttMessage) {
         try{
-            MqttPublishMessage publishMessage = (MqttPublishMessage) mqttMessage;
+        	MqttPublishMessage publishMessage = (MqttPublishMessage) mqttMessage;
             MqttQoS qos = publishMessage.fixedHeader().qosLevel();
             Message innerMsg = new Message();
             String clientId = NettyUtil.getClientId(ctx.channel());
-            ClientSession clientSession = ConnectManager.getInstance().getClient(clientId);
+            ClientSession clientSession = connectManager.getClient(clientId);
             String topic = publishMessage.variableHeader().topicName();
-            if(!this.pubSubPermission.publishVerfy(clientId,topic)){
-                log.warn("[PubMessage] permission is not allowed");
-                clientSession.getCtx().close();
+            if(!pubSubPermission.publishVerfy(clientId,topic)){
+                log.warn("[PubMessage] {} -> permission is not allowed",mqttConfig.getServerName());
+                if(clientSession.getCtx()!=null) {
+                	clientSession.getCtx().close();
+                }
                 return;
             }
             innerMsg.setPayload(MessageUtil.readBytesFromByteBuf(((MqttPublishMessage) mqttMessage).payload()));
@@ -71,32 +77,42 @@ public class PublishProcessor extends AbstractMessageProcessor implements Reques
                     processQos2(ctx,innerMsg);
                     break;
                 default:
-                    log.warn("[PubMessage] -> Wrong mqtt message,clientId={}", clientId);
+                    log.warn("[PubMessage] {} -> Wrong mqtt message,clientId={} msgId={} ", 
+                    		mqttConfig.getServerName(),clientId,innerMsg.getMsgId());
             }
-            //增加发送数量
-            clientSession.addSendIdCounter();//发送方发送一条
         }catch (Throwable tr){
-            log.warn("[PubMessage] -> Solve mqtt pub message exception:{}",tr);
+            log.warn("[PubMessage] {} -> Solve mqtt pub message exception:{}",mqttConfig.getServerName(),tr);
         }finally {
             ReferenceCountUtil.release(mqttMessage.payload());
         }
     }
 
     private void processQos2(ChannelHandlerContext ctx,Message innerMsg){
-        log.debug("[PubMessage] -> Process qos2 message,clientId={}",innerMsg.getClientId());
-        boolean flag = flowMessageStore.cacheRecMsg(innerMsg.getClientId(),innerMsg);
-        if(!flag){
-            log.warn("[PubMessage] -> cache qos2 pub message failure,clientId={}",innerMsg.getClientId());
+    	String clientId = innerMsg.getClientId();
+		log.debug("[PubMessage] {} -> Process qos2 message,clientId={} msgId={} ",
+        		mqttConfig.getServerName(),clientId,innerMsg.getMsgId());
+        boolean result = flowMessageStore.cacheRecMsg(clientId,innerMsg);
+        if(!result){
+            log.error("[PubMessage] {} -> cache qos2 save message failure,clientId={} msgId={} ",
+            		mqttConfig.getServerName(),clientId,innerMsg.getMsgId());
+            return;
         }
         MqttMessage pubRecMessage = MessageUtil.getPubRecMessage(innerMsg.getMsgId());
         ctx.writeAndFlush(pubRecMessage);
     }
 
     private void processQos1(ChannelHandlerContext ctx,Message innerMsg){
-        processMessage(innerMsg);
-        log.debug("[PubMessage] -> Process qos1 message,clientId={}",innerMsg.getClientId());
+    	String clientId = innerMsg.getClientId();
+        boolean result = processMessage(innerMsg);
+        if(!result){
+            log.error("[PubMessage] {} -> cache qos1 save message failure,clientId={} msgId={} ",
+            		mqttConfig.getServerName(),clientId,innerMsg.getMsgId());
+            return;
+        }
         MqttPubAckMessage pubAckMessage = MessageUtil.getPubAckMessage(innerMsg.getMsgId());
         ctx.writeAndFlush(pubAckMessage);
+        log.debug("[PubMessage] {} -> Process qos1 message,clientId={} msgId={} ",
+        		   mqttConfig.getServerName(),clientId,innerMsg.getMsgId());
     }
 
 }

@@ -1,0 +1,42 @@
+serverName: server2
+username: admin
+password: 123456
+tcpPort: 18082
+logBackXmlPath: src/main/resources/logback-test.xml
+performanceConfig: 
+  selectorThreadNum: 3
+  ioThreadNum: 8
+  tcpBackLog: 1024
+  tcpNoDelay: false
+  tcpReuseAddr: true
+  tcpKeepAlive: false
+  tcpSndBuf: 65536
+  tcpRcvBuf: 65536
+  useEpoll: false
+  pooledByteBufAllocatorEnable: false
+  popSize: 100
+  popInterval: 1000
+  clientSize: 10000
+  queueSize: 50000
+# 0 rocksdb 1 RheaKV
+storeType: 1
+rocksDbPath: store/rocksdb2/
+datacenterId: 1
+machineId: 2
+clusterName: rhea_mqtt
+placementDriverOptions:
+  fake: true
+  # 路由表
+  regionRouteTableOptionsList:
+    - { regionId: -1, nodeOptions: { timerPoolSize: 1, rpcProcessorThreadPoolSize: 4 } }    
+storeEngineOptions:
+  rocksDBOptions:
+    dbPath: store/rhea_db/
+  raftDataPath: store/rhea_raft/
+  serverAddress:
+    ip: 127.0.0.1
+    port: 18182
+  regionEngineOptionsList:
+    - { regionId: -1, nodeOptions: { timerPoolSize: 1, rpcProcessorThreadPoolSize: 4 } }
+  leastKeysOnSplit: 10
+initialServerList: 127.0.0.1:18181,127.0.0.1:18182,127.0.0.1:18183

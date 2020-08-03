@@ -15,8 +15,8 @@ public abstract class AbstractMessageProcessor {
         this.retainMessageStore = retainMessageStore;
     }
 
-    protected void  processMessage(Message message){
-        this.messageDispatcher.appendMessage(message);
+    protected boolean  processMessage(Message message){
+    	boolean result = this.messageDispatcher.appendMessage(message);
         boolean retain = (boolean) message.getHeader(MessageHeader.RETAIN);
         if(retain){
             int qos = (int) message.getHeader(MessageHeader.QOS);
@@ -29,6 +29,7 @@ public abstract class AbstractMessageProcessor {
                 this.retainMessageStore.storeRetainMessage(topic,message);
             }
         }
+        return result;
     }
 
 }

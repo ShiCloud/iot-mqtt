@@ -1,10 +1,9 @@
 package org.iot.mqtt.broker.session;
 
-import io.netty.channel.ChannelHandlerContext;
-
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+
+import io.netty.channel.ChannelHandlerContext;
 
 public class ClientSession {
 
@@ -13,9 +12,6 @@ public class ClientSession {
     private transient ChannelHandlerContext ctx;
     
     private transient AtomicInteger msgId = new AtomicInteger(1);
-
-    private transient AtomicLong sendIdCounter = new AtomicLong(0);
-    private transient AtomicLong receiveIdCounter = new AtomicLong(0);
 
     public ClientSession(){}
 
@@ -55,22 +51,6 @@ public class ClientSession {
         this.ctx = ctx;
     }
     
-    public Long getSendIdCounter(){
-        return sendIdCounter.get();
-    }
-    
-    public void addSendIdCounter(){
-        sendIdCounter.incrementAndGet();
-    }
-    
-    public Long getReceiveIdCounter(){
-        return receiveIdCounter.get();
-    }
-    
-    public void addReceiveIdCounter(){
-        receiveIdCounter.incrementAndGet();
-    }
-
     public int generateMessageId(){
         int messageId = msgId.getAndIncrement();
         messageId = Math.abs( messageId % 0xFFFF);

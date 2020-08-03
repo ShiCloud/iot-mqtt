@@ -1,0 +1,23 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.iot</groupId>
+		<artifactId>iot-mqtt</artifactId>
+		<version>1.0</version>
+	</parent>
+	<artifactId>iot-mqtt-store</artifactId>
+	<dependencies>
+		<dependency>
+			<groupId>org.iot</groupId>
+			<artifactId>iot-mqtt-common</artifactId>
+			<version>${version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.rocksdb</groupId>
+			<artifactId>rocksdbjni</artifactId>
+			<version>${rocksdb.version}</version>
+		</dependency>		
+	</dependencies>
+</project>

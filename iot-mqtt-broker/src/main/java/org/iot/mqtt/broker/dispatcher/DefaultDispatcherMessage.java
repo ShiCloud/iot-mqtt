@@ -11,6 +11,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.iot.mqtt.broker.BrokerRoom;
 import org.iot.mqtt.broker.session.ClientSession;
 import org.iot.mqtt.broker.session.ConnectManager;
 import org.iot.mqtt.broker.subscribe.SubscriptionMatcher;
@@ -18,10 +19,12 @@ import org.iot.mqtt.broker.utils.MessageUtil;
 import org.iot.mqtt.common.bean.Message;
 import org.iot.mqtt.common.bean.MessageHeader;
 import org.iot.mqtt.common.bean.Subscription;
+import org.iot.mqtt.common.config.MqttConfig;
+import org.iot.mqtt.common.config.PerformanceConfig;
+import org.iot.mqtt.common.utils.RejectHandler;
+import org.iot.mqtt.common.utils.ThreadFactoryImpl;
 import org.iot.mqtt.store.FlowMessageStore;
 import org.iot.mqtt.store.OfflineMessageStore;
-import org.iot.mqtt.test.utils.RejectHandler;
-import org.iot.mqtt.test.utils.ThreadFactoryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,27 +37,30 @@ public class DefaultDispatcherMessage implements MessageDispatcher {
     private boolean stoped = false;
     private static final BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>(100000);
     private ThreadPoolExecutor pollThread;
-    private int pollThreadNum;
     private SubscriptionMatcher subscriptionMatcher;
     private FlowMessageStore flowMessageStore;
     private OfflineMessageStore offlineMessageStore;
-
-    public DefaultDispatcherMessage(int pollThreadNum, SubscriptionMatcher subscriptionMatcher, FlowMessageStore flowMessageStore, OfflineMessageStore offlineMessageStore) {
-        this.pollThreadNum = pollThreadNum;
-        this.subscriptionMatcher = subscriptionMatcher;
-        this.flowMessageStore = flowMessageStore;
-        this.offlineMessageStore = offlineMessageStore;
+    private ConnectManager connectManager;
+    private MqttConfig mqttConfig;
+    
+    public DefaultDispatcherMessage(BrokerRoom brokerRoom) {
+        this.subscriptionMatcher = brokerRoom.getSubscriptionMatcher();
+        this.flowMessageStore = brokerRoom.getFlowMessageStore();
+        this.offlineMessageStore = brokerRoom.getOfflineMessageStore();
+        this.connectManager = brokerRoom.getConnectManager();
+        this.mqttConfig = brokerRoom.getMqttConfig();
     }
 
     @Override
     public void start() {
-        this.pollThread = new ThreadPoolExecutor(pollThreadNum,
-                pollThreadNum,
-                60 * 1000,
-                TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(100000),
-                new ThreadFactoryImpl("pollMessage2Subscriber"),
-                new RejectHandler("pollMessage", 100000));
+    	PerformanceConfig config = mqttConfig.getPerformanceConfig();
+    	int pollThreadNum =config.getCoreThreadNum();
+    	
+		this.pollThread = new ThreadPoolExecutor(pollThreadNum,pollThreadNum,
+                60 * 1000,TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(config.getQueueSize()),
+                new ThreadFactoryImpl(mqttConfig.getServerName()+" -> popMessage2Subscriber"),
+                new RejectHandler(mqttConfig.getServerName()+"-> popMessage", config.getQueueSize()));
 
         new Thread(new Runnable() {
             @Override
@@ -62,9 +68,10 @@ public class DefaultDispatcherMessage implements MessageDispatcher {
                 int waitTime = 1000;
                 while (!stoped) {
                     try {
-                        List<Message> messageList = new ArrayList<>(32);
+                        int size = mqttConfig.getPerformanceConfig().getPopSize();
+						List<Message> messageList = new ArrayList<>(size);
                         Message message;
-                        for (int i = 0; i < 32; i++) {
+                        for (int i = 0; i < size; i++) {
                             if (i == 0) {
                                 message = messageQueue.poll(waitTime, TimeUnit.MILLISECONDS);
                             } else {
@@ -81,9 +88,9 @@ public class DefaultDispatcherMessage implements MessageDispatcher {
                             pollThread.submit(dispatcher).get();
                         }
                     } catch (InterruptedException e) {
-                        log.warn("poll message wrong.");
+                        log.warn("[AsyncDispatcher] {} -> poll message wrong.",mqttConfig.getServerName());
                     } catch (ExecutionException e) {
-                        log.warn("AsyncDispatcher get() wrong.");
+                        log.warn("[AsyncDispatcher] {} -> get() wrong.",mqttConfig.getServerName());
                     }
                 }
             }
@@ -94,7 +101,7 @@ public class DefaultDispatcherMessage implements MessageDispatcher {
     public boolean appendMessage(Message message) {
         boolean isNotFull = messageQueue.offer(message);
         if (!isNotFull) {
-            log.warn("[PubMessage] -> the buffer queue is full");
+            log.warn("[appendMessage] {} -> the buffer queue is full",mqttConfig.getServerName());
         }
         return isNotFull;
     }
@@ -123,23 +130,22 @@ public class DefaultDispatcherMessage implements MessageDispatcher {
                         Set<Subscription> subscriptions = subscriptionMatcher.match((String) message.getHeader(MessageHeader.TOPIC));
                         for (Subscription subscription : subscriptions) {
                             String clientId = subscription.getClientId();
-                            ClientSession clientSession = ConnectManager.getInstance().getClient(subscription.getClientId());
-                            if (ConnectManager.getInstance().containClient(clientId)) {
+                            if (connectManager.containClient(clientId)) {
                                 int qos = MessageUtil.getMinQos((int) message.getHeader(MessageHeader.QOS), subscription.getQos());
                                 message.putHeader(MessageHeader.QOS, qos);
                                 if (qos > 0) {
                                     flowMessageStore.cacheSendMsg(clientId, message);
                                 }
                                 MqttPublishMessage publishMessage = MessageUtil.getPubMessage(message, false, qos, message.getMsgId());
+                                ClientSession clientSession = connectManager.getClient(subscription.getClientId());
                                 clientSession.getCtx().writeAndFlush(publishMessage);
-                                clientSession.addReceiveIdCounter();//收到一条
                             } else {
                                 offlineMessageStore.addOfflineMessage(clientId, message);
                             }
                         }
                     }
                 } catch (Exception ex) {
-                    log.warn("Dispatcher message failure,cause={}", ex);
+                    log.warn("[AsyncDispatcher] {} -> message failure,cause={}",mqttConfig.getServerName(), ex);
                 }
             }
         }

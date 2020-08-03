@@ -9,14 +9,13 @@ import org.iot.mqtt.broker.acl.PubSubPermission;
 import org.iot.mqtt.broker.session.ClientSession;
 import org.iot.mqtt.broker.session.ConnectManager;
 import org.iot.mqtt.broker.subscribe.SubscriptionMatcher;
-import org.iot.mqtt.broker.sys.SysMessageService;
-import org.iot.mqtt.broker.sys.SysToipc;
 import org.iot.mqtt.broker.utils.MessageUtil;
 import org.iot.mqtt.broker.utils.NettyUtil;
 import org.iot.mqtt.common.bean.Message;
 import org.iot.mqtt.common.bean.MessageHeader;
 import org.iot.mqtt.common.bean.Subscription;
 import org.iot.mqtt.common.bean.Topic;
+import org.iot.mqtt.common.config.MqttConfig;
 import org.iot.mqtt.store.FlowMessageStore;
 import org.iot.mqtt.store.RetainMessageStore;
 import org.iot.mqtt.store.SubscriptionStore;
@@ -38,16 +37,17 @@ public class SubscribeProcessor implements RequestProcessor {
     private FlowMessageStore flowMessageStore;
     private SubscriptionStore subscriptionStore;
     private PubSubPermission pubSubPermission;
-    private SysMessageService sysMessageService;
-
+    private ConnectManager connectManager;
+    private MqttConfig mqttConfig;
+    
     public SubscribeProcessor(BrokerRoom brokerRoom){
         this.subscriptionMatcher = brokerRoom.getSubscriptionMatcher();
         this.retainMessageStore = brokerRoom.getRetainMessageStore();
         this.flowMessageStore = brokerRoom.getFlowMessageStore();
         this.subscriptionStore = brokerRoom.getSubscriptionStore();
         this.pubSubPermission = brokerRoom.getPubSubPermission();
-        
-        this.sysMessageService = brokerRoom.getSysMessageService();
+        this.connectManager = brokerRoom.getConnectManager();
+        this.mqttConfig = brokerRoom.getMqttConfig();
     }
 
     @Override
@@ -55,10 +55,11 @@ public class SubscribeProcessor implements RequestProcessor {
         MqttSubscribeMessage subscribeMessage = (MqttSubscribeMessage) mqttMessage;
         String clientId = NettyUtil.getClientId(ctx.channel());
         int messageId = subscribeMessage.variableHeader().messageId();
-        ClientSession clientSession = ConnectManager.getInstance().getClient(clientId);
+        ClientSession clientSession = connectManager.getClient(clientId);
         List<Topic> validTopicList =validTopics(clientSession,subscribeMessage.payload().topicSubscriptions());
         if(validTopicList == null || validTopicList.size() == 0){
-            log.warn("[Subscribe] -> Valid all subscribe topic failure,clientId:{}",clientId);
+            log.warn("[Subscribe] {} -> Valid all subscribe topic failure,clientId:{}",
+            		mqttConfig.getServerName(),clientId);
             return;
         }
         List<Integer> ackQos = getTopicQos(validTopicList);
@@ -97,11 +98,6 @@ public class SubscribeProcessor implements RequestProcessor {
                 }
                 this.subscriptionStore.storeSubscription(clientSession.getClientId(),subscription);
             }
-            //关注$SYS主题，转发系统参数
-            if(SysToipc.SYS.equals(topic.getTopicName())) {
-            	sysMessageService.putClient(clientSession.getClientId());
-            	sysMessageService.wakeUp();
-            }
         }
         retainMessages = null;
         return needDispatcher;
@@ -114,7 +110,8 @@ public class SubscribeProcessor implements RequestProcessor {
         List<Topic> topicList = new ArrayList<>();
         for(MqttTopicSubscription subscription : topics){
             if(!pubSubPermission.subscribeVerfy(clientSession.getClientId(),subscription.topicName())){
-                log.warn("[SubPermission] -> this clientId:{} have no permission to subscribe this topic:{}",clientSession.getClientId(),subscription.topicName());
+                log.warn("[SubPermission] {} -> this clientId:{} have no permission to subscribe this topic:{}",
+                		mqttConfig.getServerName(),clientSession.getClientId(),subscription.topicName());
                 clientSession.getCtx().close();
                 return null;
             }

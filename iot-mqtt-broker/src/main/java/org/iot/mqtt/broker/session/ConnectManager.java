@@ -1,5 +1,6 @@
 package org.iot.mqtt.broker.session;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -7,17 +8,13 @@ public class ConnectManager {
 
     private  Map<String, ClientSession> clientCache = new ConcurrentHashMap<>();
 
-    private static final  ConnectManager INSTANCE  =  new ConnectManager();
-
-    private ConnectManager(){};
-
-    public static  ConnectManager getInstance(){
-        return INSTANCE;
-    }
-    
     public Map<String, ClientSession> getClientCache() {
 		return clientCache;
 	}
+    
+	public Collection<ClientSession> getAllClient(){
+        return this.clientCache.values();
+    }
 
 	public ClientSession getClient(String clientId){
         return this.clientCache.get(clientId);

@@ -1,32 +1,95 @@
-# iot-mqtt
-# Release 1.0
-本项目完全基于jmqtt项目https://github.com/Cicizz/jmqtt 修改。 
-目前只是对部分代码进行了梳理重构。去除了集群部分。 
-修正了一些bug。并加入简单的$SYS/实现 
-后期会加入原创的集群的实现。  
-现在已对mqtt3.1.1协议有完整的实现。
-本项目默认采用rocksdb做消息的持久化，所以即使项目故障推出，也不会丢失数据，恢复项目后可以自动重连发送。
-运行方法： 
-- maven build 出相应jar包，放入release/bin(或者加QQ群682036712，有编译好的jar)。
-- cd release/bin目录 执行相应方法 ，相关配置在config目录下。
-  1. server启动broker，默认1883端口，用户名admin密码123456。
-  2. subscribe_test启动接受服务，默认监听/QOS0,/QOS1,/QOS2,三个主题。
-  3. send_test启动发送服务，向/QOS0,/QOS1,/QOS2三个主题,并发1000个线程发送消息。
-  4. subscribe_sys启动监控服务，默认监听$SYS/主题.并显示当前所有client信息，包含每个client 接受消息数，发送消息数，关注的主题，等信息。
-  
-## 性能测试 
-## 阿里ECS 16核 64G内存 1T硬盘 未作任何优化
-### client id --- 1000个  
-### 每client id topic --- 5个
-### 每个topic发送 ---  10000条
-### 每条数据时间间隔   --- 1000ms 
-### 总数据量 ---  1000x5x10000 = 5千万个          
-### 发送耗时 --- 10286秒
-### 接收耗时 --- 10320秒
-平均耗时
-https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050491102-dfa411cb-977f-4d0f-9265-4e8099d8db32.png                                          
-资源占用
-https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050489475-bf1c5535-d68e-4304-8a68-ae020649a813.png  
+
+
+
+
+
+
+# Release 2.0
+
+- [x] ### 分布式集群架构，基于Raft协议
+
+- [x] ### 完整支持 MQTT V3.1.1  协议规范
+
+- [x] ### 完整的实现了QOS0,  QOS1,  QOS2消息
+
+- [x] ### 完全开放源码，基于 Apache Version 2.0 开源协议
+
+# 架构图
+
+ https://www.yuque.com/cloudshi/ms000x/apuehg 
+
+ # 启动三个节点
+
+```java
+	public static String[] serverPath = new String[] {
+			"src/main/resources/cluster/server1.yaml",
+			"src/main/resources/cluster/server2.yaml",
+			"src/main/resources/cluster/server3.yaml" };
+	public static void main(String[] args) throws Exception {
+		for (int i = 0; i < serverPath.length; i++) {
+			final int num = i;
+			new Thread(new Runnable(){  
+	            public void run(){  
+	            	try {
+						BrokerStartup.start(serverPath[num]);
+					} catch (JoranException e) {
+						e.printStackTrace();
+					}
+	            }}).start();  
+		}
+	}
+```
+
+# server配置文件说明
+
+```yaml
+serverName: server1 #服务名称，必须配置且不同
+username: admin #mqtt broker用户名
+password: 123456 #mqtt broker密码
+tcpPort: 18081 #mqtt broker端口号
+logBackXmlPath: src/main/resources/logback-test.xml #log配置文件路径
+performanceConfig: #优化配置
+  selectorThreadNum: 3
+  ioThreadNum: 8
+  tcpBackLog: 1024
+  tcpNoDelay: false
+  tcpReuseAddr: true
+  tcpKeepAlive: false
+  tcpSndBuf: 65536
+  tcpRcvBuf: 65536
+  useEpoll: false
+  pooledByteBufAllocatorEnable: false
+  popSize: 100 #单节点从分布式存储查询消息数量
+  popInterval: 1000 # 单节点发送消息到客户端时间间隔
+  clientSize: 10000 # 最大单节点连接客户端数量
+  queueSize: 50000 # 线程池队列数量
+# 0 rocksdb 1 RheaKV
+storeType: 1
+rocksDbPath: store/rocksdb1/ #必须配置且每个server不同
+datacenterId: 1 #用于生成分布式唯一id的雪花算法配置
+machineId: 1 #用于生成分布式唯一id的雪花算法配置
+#分布式相关配置
+clusterName: rhea_mqtt #必须配置且每个server相同
+placementDriverOptions:
+  fake: true
+  # 路由表
+  regionRouteTableOptionsList:
+     #raft协议节点存储路由配置
+    - { regionId: -1, nodeOptions: { timerPoolSize: 1, rpcProcessorThreadPoolSize: 4 } }    
+storeEngineOptions:
+  rocksDBOptions:
+    dbPath: store/rhea_db/ #必须配置且每个server可以相同
+  raftDataPath: store/rhea_raft/ #必须配置且每个server可以相同
+  serverAddress:
+    ip: 127.0.0.1
+    port: 18181 #raft协议节点端口
+  regionEngineOptionsList:
+     #raft协议节点存储分区配置
+    - { regionId: -1, nodeOptions: { timerPoolSize: 1, rpcProcessorThreadPoolSize: 4 } }
+  leastKeysOnSplit: 10
+initialServerList: 127.0.0.1:18181,127.0.0.1:18182,127.0.0.1:18183 #raft协议节点列表
+```
+
 欢迎大家一起 交流qq群
 https://cdn.nlark.com/yuque/0/2020/png/1624173/1593050500510-b2821135-c8e0-4969-8417-97ab50bcc65f.png
 

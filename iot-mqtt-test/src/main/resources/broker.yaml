@@ -1,0 +1,19 @@
+serverName: server
+username: admin
+password: 123456
+tcpPort: 18081
+logBackXmlPath: src\main\resources\logback-test.xml
+performanceConfig: 
+  selectorThreadNum: 3
+  ioThreadNum: 8
+  tcpBackLog: 1024
+  tcpNoDelay: false
+  tcpReuseAddr: true
+  tcpKeepAlive: false
+  tcpSndBuf: 65536
+  tcpRcvBuf: 65536
+  useEpoll: false
+  pooledByteBufAllocatorEnable: false
+# 0 rocksdb 2 RheaKV
+storeType: 0 
+rocksDbPath: store/rocksdb_test/

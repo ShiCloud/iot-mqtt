@@ -7,10 +7,9 @@ import org.iot.mqtt.broker.BrokerRoom;
 import org.iot.mqtt.broker.session.ClientSession;
 import org.iot.mqtt.broker.session.ConnectManager;
 import org.iot.mqtt.broker.subscribe.SubscriptionMatcher;
-import org.iot.mqtt.broker.sys.SysMessageService;
-import org.iot.mqtt.broker.sys.SysToipc;
 import org.iot.mqtt.broker.utils.MessageUtil;
 import org.iot.mqtt.broker.utils.NettyUtil;
+import org.iot.mqtt.common.config.MqttConfig;
 import org.iot.mqtt.store.SubscriptionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +26,14 @@ public class UnSubscribeProcessor implements RequestProcessor {
 
     private SubscriptionMatcher subscriptionMatcher;
     private SubscriptionStore subscriptionStore;
-    private SysMessageService sysMessageService;
+    private ConnectManager connectManager;
+    private MqttConfig mqttConfig;
     
     public UnSubscribeProcessor(BrokerRoom brokerRoom){
         this.subscriptionMatcher = brokerRoom.getSubscriptionMatcher();
         this.subscriptionStore = brokerRoom.getSubscriptionStore();
-        this.sysMessageService = brokerRoom.getSysMessageService();
+        this.connectManager = brokerRoom.getConnectManager();
+        this.mqttConfig = brokerRoom.getMqttConfig();
     }
 
     @Override
@@ -41,17 +42,14 @@ public class UnSubscribeProcessor implements RequestProcessor {
         MqttUnsubscribePayload unsubscribePayload = unsubscribeMessage.payload();
         List<String> topics = unsubscribePayload.topics();
         String clientId = NettyUtil.getClientId(ctx.channel());
-        ClientSession clientSession = ConnectManager.getInstance().getClient(clientId);
+        ClientSession clientSession = connectManager.getClient(clientId);
         if(Objects.isNull(clientSession)){
-            log.warn("[UnSubscribe] -> The client is not online.clientId={}",clientId);
+            log.warn("[UnSubscribe] {} -> The client is not online.clientId={}",
+            		mqttConfig.getServerName(),clientId);
         }
         topics.forEach( topic -> {
             subscriptionMatcher.unSubscribe(topic,clientId);
             subscriptionStore.removeSubscription(clientId,topic);
-            //停止发送系统信息
-            if(SysToipc.SYS.equals(topic)) {
-            	sysMessageService.removeClient(clientSession.getClientId());
-            }
         });
         MqttUnsubAckMessage unsubAckMessage = MessageUtil.getUnSubAckMessage(MessageUtil.getMessageId(mqttMessage));
         ctx.writeAndFlush(unsubAckMessage);

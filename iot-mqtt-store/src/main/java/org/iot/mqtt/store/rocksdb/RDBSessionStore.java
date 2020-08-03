@@ -2,10 +2,9 @@ package org.iot.mqtt.store.rocksdb;
 
 import java.nio.charset.Charset;
 
+import org.iot.mqtt.common.utils.SerializeHelper;
 import org.iot.mqtt.store.SessionStore;
-import org.iot.mqtt.store.rocksdb.db.RDB;
-import org.iot.mqtt.store.rocksdb.db.RDBStorePrefix;
-import org.iot.mqtt.test.utils.SerializeHelper;
+import org.iot.mqtt.store.StorePrefix;
 import org.rocksdb.ColumnFamilyHandle;
 
 public class RDBSessionStore implements SessionStore {
@@ -44,11 +43,11 @@ public class RDBSessionStore implements SessionStore {
     }
 
     private byte[] key(String clientId){
-        return (RDBStorePrefix.SESSION + clientId).getBytes(Charset.forName("UTF-8"));
+        return (StorePrefix.SESSION + clientId).getBytes(Charset.forName("UTF-8"));
     }
 
 
     private ColumnFamilyHandle columnFamilyHandle(){
-        return this.rdb.getColumnFamilyHandle(RDBStorePrefix.SESSION);
+        return this.rdb.getColumnFamilyHandle(StorePrefix.SESSION);
     }
 }

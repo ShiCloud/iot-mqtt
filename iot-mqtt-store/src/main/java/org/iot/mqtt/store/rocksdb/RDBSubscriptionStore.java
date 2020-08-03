@@ -5,10 +5,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import org.iot.mqtt.common.bean.Subscription;
+import org.iot.mqtt.common.utils.SerializeHelper;
+import org.iot.mqtt.store.StorePrefix;
 import org.iot.mqtt.store.SubscriptionStore;
-import org.iot.mqtt.store.rocksdb.db.RDB;
-import org.iot.mqtt.store.rocksdb.db.RDBStorePrefix;
-import org.iot.mqtt.test.utils.SerializeHelper;
 import org.rocksdb.ColumnFamilyHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,15 +67,15 @@ public class RDBSubscriptionStore implements SubscriptionStore {
     }
 
     private byte[] keyPrefix(String clientId){
-        return (RDBStorePrefix.SUBSCRIPTION + clientId).getBytes(Charset.forName("UTF-8"));
+        return (StorePrefix.SUBSCRIPTION + clientId).getBytes(Charset.forName("UTF-8"));
     }
 
     private byte[] key(String clientId,String topic){
-        return (RDBStorePrefix.SUBSCRIPTION + clientId + topic).getBytes(Charset.forName("UTF-8"));
+        return (StorePrefix.SUBSCRIPTION + clientId + topic).getBytes(Charset.forName("UTF-8"));
     }
 
 
     private ColumnFamilyHandle columnFamilyHandle(){
-        return this.rdb.getColumnFamilyHandle(RDBStorePrefix.SUBSCRIPTION);
+        return this.rdb.getColumnFamilyHandle(StorePrefix.SUBSCRIPTION);
     }
 }

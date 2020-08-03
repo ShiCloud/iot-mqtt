@@ -5,19 +5,14 @@
 	<parent>
 		<groupId>org.iot</groupId>
 		<artifactId>iot-mqtt</artifactId>
-		<version>1.0</version>
+		<version>${project.version}</version>
 	</parent>
 	<artifactId>iot-mqtt-broker</artifactId>
 	<dependencies>
 		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-all</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
 			<groupId>org.iot</groupId>
 			<artifactId>iot-mqtt-store</artifactId>
-			<version>${version}</version>
+			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
 
@@ -26,7 +21,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
-				<version>2.5.5</version>
 				<configuration>
 					<archive>
 						<manifest>

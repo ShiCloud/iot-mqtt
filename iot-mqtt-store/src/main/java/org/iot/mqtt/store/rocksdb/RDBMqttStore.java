@@ -2,7 +2,6 @@ package org.iot.mqtt.store.rocksdb;
 
 import org.iot.mqtt.common.config.MqttConfig;
 import org.iot.mqtt.store.AbstractMqttStore;
-import org.iot.mqtt.store.rocksdb.db.RDB;
 
 public class RDBMqttStore extends AbstractMqttStore {
 
@@ -28,6 +27,5 @@ public class RDBMqttStore extends AbstractMqttStore {
     public void shutdown() {
         this.rdb.close();
     }
-
-
+	
 }

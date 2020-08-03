@@ -10,5 +10,5 @@ public interface WillMessageStore {
 
     void storeWillMessage(String clientId, Message message);
 
-    Message removeWillMessage(String clientId);
+    boolean removeWillMessage(String clientId);
 }

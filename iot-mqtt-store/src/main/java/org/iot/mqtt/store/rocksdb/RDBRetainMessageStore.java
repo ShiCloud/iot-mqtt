@@ -6,10 +6,9 @@ import java.util.Collection;
 import java.util.Objects;
 
 import org.iot.mqtt.common.bean.Message;
+import org.iot.mqtt.common.utils.SerializeHelper;
 import org.iot.mqtt.store.RetainMessageStore;
-import org.iot.mqtt.store.rocksdb.db.RDB;
-import org.iot.mqtt.store.rocksdb.db.RDBStorePrefix;
-import org.iot.mqtt.test.utils.SerializeHelper;
+import org.iot.mqtt.store.StorePrefix;
 import org.rocksdb.ColumnFamilyHandle;
 
 public class RDBRetainMessageStore implements RetainMessageStore {
@@ -45,11 +44,11 @@ public class RDBRetainMessageStore implements RetainMessageStore {
     }
 
     private byte[] key(String topic){
-        return (RDBStorePrefix.RETAIN_MESSAGE + topic).getBytes(Charset.forName("UTF-8"));
+        return (StorePrefix.RETAIN_MESSAGE + topic).getBytes(Charset.forName("UTF-8"));
     }
 
 
     private ColumnFamilyHandle columnFamilyHandle(){
-        return this.rdb.getColumnFamilyHandle(RDBStorePrefix.RETAIN_MESSAGE);
+        return this.rdb.getColumnFamilyHandle(StorePrefix.RETAIN_MESSAGE);
     }
 }

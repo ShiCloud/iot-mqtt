@@ -5,19 +5,19 @@
 	<parent>
 		<groupId>org.iot</groupId>
 		<artifactId>iot-mqtt</artifactId>
-		<version>1.0</version>
+		<version>${project.version}</version>
 	</parent>
 	<artifactId>iot-mqtt-test</artifactId>
 	<dependencies>
 		<dependency>
-			<groupId>org.fusesource.mqtt-client</groupId>
-			<artifactId>mqtt-client</artifactId>
-			<version>1.12</version>
+			<groupId>org.iot</groupId>
+			<artifactId>iot-mqtt-broker</artifactId>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>org.iot</groupId>
-			<artifactId>iot-mqtt-common</artifactId>
-			<version>${version}</version>
+			<groupId>org.eclipse.paho</groupId>
+			<artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+			<version>${paho.version}</version>
 		</dependency>
 	</dependencies>
 
@@ -26,7 +26,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
-				<version>2.5.5</version>
 				<configuration>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>

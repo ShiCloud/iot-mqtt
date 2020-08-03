@@ -3,10 +3,9 @@ package org.iot.mqtt.store.rocksdb;
 import java.nio.charset.Charset;
 
 import org.iot.mqtt.common.bean.Message;
+import org.iot.mqtt.common.utils.SerializeHelper;
+import org.iot.mqtt.store.StorePrefix;
 import org.iot.mqtt.store.WillMessageStore;
-import org.iot.mqtt.store.rocksdb.db.RDB;
-import org.iot.mqtt.store.rocksdb.db.RDBStorePrefix;
-import org.iot.mqtt.test.utils.SerializeHelper;
 import org.rocksdb.ColumnFamilyHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,23 +41,22 @@ public class RDBWillMessageStore implements WillMessageStore {
     }
 
     @Override
-    public Message removeWillMessage(String clientId) {
+    public boolean removeWillMessage(String clientId) {
         byte[] key = key(clientId);
         byte[] value = this.rdb.get(columnFamilyHandle(),key);
         if(value == null){
             log.warn("The will message is not exist,cause = {}",clientId);
-            return null;
         }
         this.rdb.delete(columnFamilyHandle(),key);
-        return SerializeHelper.deserialize(value,Message.class);
+        return true;
     }
 
     private byte[] key(String clientId){
-        return (RDBStorePrefix.WILL_MESSAGE + clientId).getBytes(Charset.forName("UTF-8"));
+        return (StorePrefix.WILL_MESSAGE + clientId).getBytes(Charset.forName("UTF-8"));
     }
 
 
     private ColumnFamilyHandle columnFamilyHandle(){
-        return this.rdb.getColumnFamilyHandle(RDBStorePrefix.WILL_MESSAGE);
+        return this.rdb.getColumnFamilyHandle(StorePrefix.WILL_MESSAGE);
     }
 }

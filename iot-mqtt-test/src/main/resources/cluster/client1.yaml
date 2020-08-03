@@ -1,0 +1,9 @@
+url: tcp://localhost:18081 # server 节点url
+username: admin # server 用户名
+password: 123456 # server 密码
+keepAlive: 20
+retained: false
+reconnectAttemptsMax: -1
+reconnectDelay: 10
+logBackXmlPath: src/main/resources/logback-test.xml
+    

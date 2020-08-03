@@ -5,29 +5,29 @@
 	<!-- ch.qos.logback.core.ConsoleAppender 控制台输出 -->
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %logger{36} %L - %msg%n</Pattern>
+            <Pattern>%d{YYYY-MM-dd HH:mm:ss} [%t] %-5p %c{1}:%L - %msg%n</Pattern>
         </encoder>
     </appender>
 
     <appender name="file"
               class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <File>../log/mqtt-test.log</File>
+        <File>log/mqtt-test.log</File>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <FileNamePattern>../log/mqtt-test-%d{yyyy-MM-dd}.log
+            <FileNamePattern>log/mqtt-test-%d{yyyy-MM-dd}.log
             </FileNamePattern>
             <MaxHistory>30</MaxHistory>
         </rollingPolicy>
         <layout class="ch.qos.logback.classic.PatternLayout">
-            <pattern>[%-5level] %d{HH:mm:ss.SSS} [%thread] %logger{36} %L - %msg%n</pattern>
+            <pattern>%d{YYYY-MM-dd HH:mm:ss} [%t] %-5p %c{1}:%L - %msg%n</pattern>
         </layout>
     </appender>
 
     <root>
-        <level value="INFO" />
+        <level value="ERROR" />
         <appender-ref ref="console"/>
         <appender-ref ref="file" />
     </root>
     <!-- 日志级别 -->
-
-    <logger name="com.tst.iot.mqtt" level="INFO" ></logger>
+    <logger name="org.iot.mqtt" level="INFO" ></logger>
+    
 </configuration>

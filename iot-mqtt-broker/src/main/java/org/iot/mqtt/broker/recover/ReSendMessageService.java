@@ -7,14 +7,18 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.iot.mqtt.broker.BrokerRoom;
 import org.iot.mqtt.broker.session.ClientSession;
 import org.iot.mqtt.broker.session.ConnectManager;
 import org.iot.mqtt.broker.utils.MessageUtil;
 import org.iot.mqtt.common.bean.Message;
 import org.iot.mqtt.common.bean.MessageHeader;
+import org.iot.mqtt.common.config.MqttConfig;
+import org.iot.mqtt.common.config.PerformanceConfig;
+import org.iot.mqtt.common.utils.ThreadFactoryImpl;
 import org.iot.mqtt.store.FlowMessageStore;
 import org.iot.mqtt.store.OfflineMessageStore;
-import org.iot.mqtt.test.utils.ThreadFactoryImpl;
+import org.iot.mqtt.store.ResendMessageStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,19 +37,30 @@ public class ReSendMessageService {
 	private BlockingQueue<String> clients = new LinkedBlockingQueue<>();
 	private OfflineMessageStore offlineMessageStore;
 	private FlowMessageStore flowMessageStore;
-	private int maxSize = 10000;
-	private ThreadPoolExecutor sendMessageExecutor = new ThreadPoolExecutor(4, 4, 60, TimeUnit.SECONDS,
-			new LinkedBlockingQueue<>(10000), new ThreadFactoryImpl("Resend MessageThread"));
+	private ConnectManager connectManager;
+    private MqttConfig mqttConfig;
+    private PerformanceConfig config;
+	private int clientSize;
+	private ThreadPoolExecutor sendMessageExecutor;
 
-	public ReSendMessageService(OfflineMessageStore offlineMessageStore, FlowMessageStore flowMessageStore) {
-		this.offlineMessageStore = offlineMessageStore;
-		this.flowMessageStore = flowMessageStore;
+	public ReSendMessageService(BrokerRoom brokerRoom) {
+		this.offlineMessageStore = brokerRoom.getOfflineMessageStore();
+		this.flowMessageStore = brokerRoom.getFlowMessageStore();
+		this.connectManager = brokerRoom.getConnectManager();
+        this.mqttConfig = brokerRoom.getMqttConfig();
+        this.config = mqttConfig.getPerformanceConfig();
+		this.clientSize = config.getClientSize();
+        int coreThreadNum = config.getCoreThreadNum();
+		this.sendMessageExecutor = new ThreadPoolExecutor(coreThreadNum, coreThreadNum,60, TimeUnit.SECONDS,
+    			new LinkedBlockingQueue<>(config.getQueueSize()), 
+    			new ThreadFactoryImpl(mqttConfig.getServerName()+" -> Resend MessageThread"));
 		this.thread = new Thread(new PutClient());
 	};
 
 	public boolean put(String clientId) {
-		if (this.clients.size() > maxSize) {
-			log.warn("[Resend] message busy! the client queue size is over {}", maxSize);
+		if (this.clients.size() > clientSize) {
+			log.warn("[Resend] {} -> message busy! the client queue size is over {}",
+					mqttConfig.getServerName(), clientSize);
 			return false;
 		}
 		this.clients.offer(clientId);
@@ -62,57 +77,65 @@ public class ReSendMessageService {
 		}
 	}
 
-	public boolean dispatcherMessage(String clientId, Message message) {
-		ClientSession clientSession = ConnectManager.getInstance().getClient(clientId);
+	public boolean dispatcherMessage(String clientId, Message message,boolean isOffline) {
+		ClientSession clientSession = connectManager.getClient(clientId);
 		// client off line again
 		if (clientSession == null) {
-			log.warn("The client offline again, put the message to the offline queue,clientId:{}", clientId);
+			log.warn("[Resend] {} -> The client offline again, put the message to the offline queue,clientId:{}",
+					mqttConfig.getServerName(), clientId);
+			offlineMessageStore.addOfflineMessage(clientId, message);
 			return false;
 		}
 		int qos = (int) message.getHeader(MessageHeader.QOS);
-		int messageId = message.getMsgId();
 		if (qos > 0) {
+			if(isOffline) {
+				message.setMsgId(clientSession.generateMessageId());
+			} 
 			flowMessageStore.cacheSendMsg(clientId, message);
 		}
-		MqttPublishMessage publishMessage = MessageUtil.getPubMessage(message, false, qos, messageId);
+		MqttPublishMessage publishMessage = MessageUtil.getPubMessage(message, false, qos, message.getMsgId());
 		clientSession.getCtx().writeAndFlush(publishMessage);
 		return true;
 	}
 
 	class ResendMessageTask implements Callable<Boolean> {
 
-		private int getNums = 100;
+		private int getNums;
 		private String clientId;
 		
-		public ResendMessageTask(String clientId) {
+		public ResendMessageTask(String clientId,int getNums) {
 			this.clientId = clientId;
+			this.getNums = getNums;
 		}
 		
 		@Override
 		public Boolean call() {
-			log.debug("[Resend] flowMessageStore count:{}",flowMessageStore.getAllSendMsgCount(clientId));
-			Collection<Message> flowMsgs = flowMessageStore.getSendMsg(clientId, getNums);
+			boolean flag = resendMsg(flowMessageStore);
+			if(!flag) {
+				return flag;
+			}
+			flag = resendMsg(offlineMessageStore);
+			if(!flag) {
+				return flag;
+			}
+			return flag;
+		}
+
+		private boolean resendMsg(ResendMessageStore resendMessageStore) {
+			boolean flag = true;
+			Collection<Message> flowMsgs = resendMessageStore.getReSendMsg(clientId, getNums);
 			while (flowMsgs != null && !flowMsgs.isEmpty()) {
 				for (Message message : flowMsgs) {
-					if (!dispatcherMessage(clientId, message)) {
-						return false;
+					if (!dispatcherMessage(clientId, message,true)) {
+						flag = false;
 					}
 				}
-				flowMsgs = flowMessageStore.getSendMsg(clientId, getNums);
-			}
-			log.debug("[Resend] offlineMessageStore count:{}",offlineMessageStore.getAllOfflineMessageCount(clientId));
-			if (offlineMessageStore.containOfflineMsg(clientId)) {
-				Collection<Message> offlineMsgs = offlineMessageStore.getOfflineMessage(clientId, getNums);
-				while (offlineMsgs != null && !offlineMsgs.isEmpty()) {
-					for (Message message : offlineMsgs) {
-						if (!dispatcherMessage(clientId, message)) {
-							return false;
-						}
-					}
-					offlineMsgs = offlineMessageStore.getOfflineMessage(clientId, getNums);
+				if(!flag) {
+					return flag;
 				}
+				flowMsgs = resendMessageStore.getReSendMsg(clientId, getNums);
 			}
-			return true;
+			return flag;
 		}
 	}
 
@@ -124,26 +147,26 @@ public class ReSendMessageService {
 				try {
 					clientId = clients.poll();
 					if (clientId == null) {
-						Thread.sleep(3000);
+						Thread.sleep(config.getPopInterval());
 						continue;
 					}
-					ResendMessageTask resendMessageTask = new ResendMessageTask(clientId);
+					ResendMessageTask resendMessageTask = new ResendMessageTask(clientId,config.getPopSize());
 					long start = System.currentTimeMillis();
-					boolean rs = sendMessageExecutor.submit(resendMessageTask).get(2000, TimeUnit.MILLISECONDS);
+					boolean rs = sendMessageExecutor.submit(resendMessageTask).get();
 					if (!rs) {
-						log.warn("[Resend] message is interrupted,the client offline again,clientId={}", clientId);
+						log.warn("[Resend] {} -> message is interrupted,the client offline again,clientId={}",mqttConfig.getServerName(), clientId);
 					}
 					long cost = System.currentTimeMillis() - start;
-					log.debug("[Resend] message clientId:{} cost time:{}", clientId, cost);
+					log.debug("[Resend] {} -> message clientId:{} cost time:{}",mqttConfig.getServerName(), clientId, cost);
 				} catch (Exception e) {
-					log.warn("[Resend] message failure,clientId:{}", clientId);
+					log.warn("[Resend] {} -> message failure,clientId:{}",mqttConfig.getServerName(), clientId);
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e1) {
 					}
 				}
 			}
-			log.info("[Resend] Shutdown resend message service success.");
+			log.info("[Resend] {} -> Shutdown resend message service success.",mqttConfig.getServerName());
 		}
 	}
 

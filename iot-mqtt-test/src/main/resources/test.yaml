@@ -1,0 +1,9 @@
+url: tcp://localhost:18081
+username: admin
+password: 123456
+keepAlive: 20
+retained: false
+reconnectAttemptsMax: -1
+reconnectDelay: 10
+logBackXmlPath: src/main/resources/logback-test.xml
+    

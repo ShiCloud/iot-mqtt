@@ -16,6 +16,7 @@ import org.iot.mqtt.broker.utils.NettyUtil;
 import org.iot.mqtt.common.bean.Message;
 import org.iot.mqtt.common.bean.MessageHeader;
 import org.iot.mqtt.common.bean.Subscription;
+import org.iot.mqtt.common.config.MqttConfig;
 import org.iot.mqtt.store.FlowMessageStore;
 import org.iot.mqtt.store.OfflineMessageStore;
 import org.iot.mqtt.store.SessionStore;
@@ -44,7 +45,9 @@ public class ConnectProcessor implements RequestProcessor {
     private ConnectPermission connectPermission;
     private ReSendMessageService reSendMessageService;
     private SubscriptionMatcher subscriptionMatcher;
-
+    private ConnectManager connectManager;
+    private MqttConfig mqttConfig;
+    
     public ConnectProcessor(BrokerRoom brokerRoom){
         this.flowMessageStore = brokerRoom.getFlowMessageStore();
         this.willMessageStore = brokerRoom.getWillMessageStore();
@@ -54,6 +57,8 @@ public class ConnectProcessor implements RequestProcessor {
         this.connectPermission = brokerRoom.getConnectPermission();
         this.reSendMessageService = brokerRoom.getReSendMessageService();
         this.subscriptionMatcher = brokerRoom.getSubscriptionMatcher();
+        this.connectManager = brokerRoom.getConnectManager();
+        this.mqttConfig = brokerRoom.getMqttConfig();
     }
 
     @Override
@@ -62,34 +67,39 @@ public class ConnectProcessor implements RequestProcessor {
         MqttConnectReturnCode returnCode = null;
         int mqttVersion = connectMessage.variableHeader().version();
         String clientId = connectMessage.payload().clientIdentifier();
-        boolean cleansession = connectMessage.variableHeader().isCleanSession();
         String userName = connectMessage.payload().userName();
         byte[] password = connectMessage.payload().passwordInBytes();
-        ClientSession clientSession = null;
         boolean sessionPresent = false;
         try{
             if(!versionValid(mqttVersion)){
                 returnCode = MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION;
+            } else if(!checkServer()){
+                returnCode = MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE;
             } else if(!clientIdVerfy(clientId)){
                 returnCode = MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED;
             } else if(onBlackList(NettyUtil.getRemoteAddr(ctx.channel()),clientId)){
                 returnCode = MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED;
             } else if(!authentication(clientId,userName,password)){
                 returnCode = MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD;
-            } else{
+            }else{
                 int heartbeatSec = connectMessage.variableHeader().keepAliveTimeSeconds();
                 if(!keepAlive(clientId,ctx,heartbeatSec)){
-                    log.warn("[CONNECT] -> set heartbeat failure,clientId:{},heartbeatSec:{}",clientId,heartbeatSec);
+                    log.warn("[CONNECT] {} -> set heartbeat failure,clientId:{},heartbeatSec:{}",mqttConfig.getServerName(),clientId,heartbeatSec);
                     throw new Exception("set heartbeat failure");
                 }
+                
                 Object lastState = sessionStore.getLastSession(clientId);
                 if(Objects.nonNull(lastState) && lastState.equals(true)){
-                    ClientSession previousClient = ConnectManager.getInstance().getClient(clientId);
+                    ClientSession previousClient = connectManager.getClient(clientId);
                     if(previousClient != null){
-                        previousClient.getCtx().close();
-                        ConnectManager.getInstance().removeClient(clientId);
+                    	if(previousClient.getCtx()!=null) {
+                    		previousClient.getCtx().close();
+                    	}
+                        connectManager.removeClient(clientId);
                     }
                 }
+                boolean cleansession = connectMessage.variableHeader().isCleanSession();
+                ClientSession clientSession = null;
                 if(cleansession){
                     clientSession = createNewClientSession(clientId,ctx);
                     sessionPresent = false;
@@ -103,6 +113,7 @@ public class ConnectProcessor implements RequestProcessor {
                     }
                 }
                 sessionStore.setSession(clientId,true);
+                
                 boolean willFlag = connectMessage.variableHeader().isWillFlag();
                 if(willFlag){
                     boolean willRetain = connectMessage.variableHeader().isWillRetain();
@@ -113,21 +124,21 @@ public class ConnectProcessor implements RequestProcessor {
                 }
                 returnCode = MqttConnectReturnCode.CONNECTION_ACCEPTED;
                 NettyUtil.setClientId(ctx.channel(),clientId);
-                ConnectManager.getInstance().putClient(clientId,clientSession);
+                connectManager.putClient(clientId,clientSession);
             }
             MqttConnAckMessage ackMessage = MessageUtil.getConnectAckMessage(returnCode,sessionPresent);
             ctx.writeAndFlush(ackMessage);
             if(returnCode != MqttConnectReturnCode.CONNECTION_ACCEPTED){
                 ctx.close();
-                log.warn("[CONNECT] -> {} connect failure,returnCode={}",clientId,returnCode);
+                log.warn("[CONNECT] {} -> {} connect failure,returnCode={}",mqttConfig.getServerName(),clientId,returnCode);
                 return;
             }
-            log.info("[CONNECT] -> {} connect to this mqtt server",clientId);
+            log.info("[CONNECT] {} -> {} connect to this mqtt server",mqttConfig.getServerName(),clientId);
             
             reConnect2SendMessage(clientId);
             
         }catch(Exception ex){
-            log.warn("[CONNECT] -> Service Unavailable: cause={}",ex);
+            log.warn("[CONNECT] {} -> Service Unavailable: cause={}",mqttConfig.getServerName(),ex);
             returnCode = MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE;
             MqttConnAckMessage ackMessage = MessageUtil.getConnectAckMessage(returnCode,sessionPresent);
             ctx.writeAndFlush(ackMessage);
@@ -135,13 +146,18 @@ public class ConnectProcessor implements RequestProcessor {
         }
     }
     
-    private boolean keepAlive(String clientId,ChannelHandlerContext ctx,int heatbeatSec){
-        if(this.connectPermission.verfyHeartbeatTime(clientId,heatbeatSec)){
+	private boolean checkServer() {
+		return true;
+	}
+
+	private boolean keepAlive(String clientId,ChannelHandlerContext ctx,int heatbeatSec){
+        if(this.connectPermission.verifyHeartbeatTime(clientId,heatbeatSec)){
             int keepAlive = (int)(heatbeatSec * 1.5f);
-            if(ctx.pipeline().names().contains("idleStateHandler")){
-                ctx.pipeline().remove("idleStateHandler");
+            String idle = "idleStateHandler";
+			if(ctx.pipeline().names().contains(idle)){
+                ctx.pipeline().remove(idle);
             }
-            ctx.pipeline().addFirst("idleStateHandler",new IdleStateHandler(keepAlive,0,0));
+            ctx.pipeline().addFirst(idle,new IdleStateHandler(keepAlive,0,0));
             return true;
         }
         return false;
@@ -156,17 +172,17 @@ public class ConnectProcessor implements RequestProcessor {
         Message message = new Message(Message.Type.WILL,headers,willPayload);
         message.setClientId(clientId);
         willMessageStore.storeWillMessage(clientId,message);
-        log.info("[WillMessageStore] : {} store will message:{}",clientId,message);
+        log.info("[WillMessageStore] {} -> {} store will message:{}",mqttConfig.getServerName(),clientId,message);
     }
 
     private ClientSession createNewClientSession(String clientId,ChannelHandlerContext ctx){
         ClientSession clientSession = new ClientSession(clientId,true);
         clientSession.setCtx(ctx);
         //clear previous sessions
-        this.flowMessageStore.clearClientFlowCache(clientId);
-        this.offlineMessageStore.clearOfflineMsgCache(clientId);
-        this.subscriptionStore.clearSubscription(clientId);
-        this.sessionStore.clearSession(clientId);
+        flowMessageStore.clearClientCache(clientId);
+        offlineMessageStore.clearOfflineMsgCache(clientId);
+        subscriptionStore.clearSubscription(clientId);
+        sessionStore.clearSession(clientId);
         return clientSession;
     }
 
@@ -178,7 +194,7 @@ public class ConnectProcessor implements RequestProcessor {
             clientSession.setCtx(ctx);
             Collection<Subscription> subscriptions = subscriptionStore.getSubscriptions(clientId);
             for(Subscription subscription : subscriptions){
-                this.subscriptionMatcher.subscribe(subscription);
+                subscriptionMatcher.subscribe(subscription);
             }
             return clientSession;
     }
