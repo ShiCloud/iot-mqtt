@@ -97,7 +97,7 @@ public class BrokerRoom {
 	private void initDispatcher(MqttConfig mqttConfig) {
 		switch (mqttConfig.getStoreType()) {
 		case ROCKSDB:
-			this.messageDispatcher = new DefaultDispatcherMessage(this);
+			this.messageDispatcher = new DefaultDispatcherMessage(this,(RDBMqttStore)abstractMqttStore);
 			break;		
 		case RHEAKV:
 			this.messageDispatcher = new ClusterDispatcherMessage(this,(RheakvMqttStore)abstractMqttStore);

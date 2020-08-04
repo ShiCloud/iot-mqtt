@@ -273,6 +273,7 @@ public class RDB {
         list.add(new ColumnFamilyDescriptor(StorePrefix.REC_FLOW_MESSAGE.getBytes(Charset.forName("UTF-8"))));
         list.add(new ColumnFamilyDescriptor(StorePrefix.SEND_FLOW_MESSAGE.getBytes(Charset.forName("UTF-8"))));
         list.add(new ColumnFamilyDescriptor(StorePrefix.RETAIN_MESSAGE.getBytes(Charset.forName("UTF-8"))));
+        list.add(new ColumnFamilyDescriptor(StorePrefix.MESSAGE.getBytes(Charset.forName("UTF-8"))));
         return list;
     }
 

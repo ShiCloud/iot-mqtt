@@ -21,9 +21,9 @@ import java.util.Collection;
 import java.util.List;
 
 import org.iot.mqtt.common.bean.Message;
-import org.iot.mqtt.common.config.MqttConfig;
 import org.iot.mqtt.common.utils.SerializeHelper;
 import org.iot.mqtt.common.utils.SnowFlake;
+import org.iot.mqtt.store.MessageQueue;
 import org.iot.mqtt.store.StorePrefix;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +35,7 @@ import com.alipay.sofa.jraft.rhea.storage.KVEntry;
  * @author cloudshi 14768909@qq.com
  * @date 2020-07-13
  */
-public class RheakvAppendMessageStore {
+public class RheakvAppendMessageStore implements MessageQueue{
 	private static final Logger log = LoggerFactory.getLogger(RheakvAppendMessageStore.class);
 	
 	private SnowFlake snowFlake;
@@ -51,7 +51,7 @@ public class RheakvAppendMessageStore {
     	return keyPrefix(server)+RheakvUtils.getFormatId(snowFlake.nextId());
     }
     
-    public RheakvAppendMessageStore(MqttConfig mqttConfig,RheakvMqttStore store,SnowFlake snowFlake){
+    public RheakvAppendMessageStore(RheakvMqttStore store,SnowFlake snowFlake){
     	this.snowFlake= snowFlake;
     	this.rheaKVStore = store.getRheaKVStore();
     	String ip = store.getNode().getRheaKVConfig().getStoreEngineOptions().getServerAddress().getIp();

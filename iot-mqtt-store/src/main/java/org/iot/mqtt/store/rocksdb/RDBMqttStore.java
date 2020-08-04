@@ -14,18 +14,24 @@ public class RDBMqttStore extends AbstractMqttStore {
 
     @Override
     public void init() throws Exception {
-        this.rdb.init();
-        this.flowMessageStore = new RDBFlowMessageStore(rdb);
-        this.willMessageStore = new RDBWillMessageStore(rdb);
-        this.retainMessageStore = new RDBRetainMessageStore(rdb);
-        this.offlineMessageStore = new RDBOfflineMessageStore(rdb);
-        this.subscriptionStore = new RDBSubscriptionStore(rdb);
-        this.sessionStore = new RDBSessionStore(rdb);
+        this.getRdb().init();
+        this.flowMessageStore = new RDBFlowMessageStore(getRdb());
+        this.willMessageStore = new RDBWillMessageStore(getRdb());
+        this.retainMessageStore = new RDBRetainMessageStore(getRdb());
+        this.offlineMessageStore = new RDBOfflineMessageStore(getRdb());
+        this.subscriptionStore = new RDBSubscriptionStore(getRdb());
+        this.sessionStore = new RDBSessionStore(getRdb());
     }
 
     @Override
     public void shutdown() {
-        this.rdb.close();
+        this.getRdb().close();
     }
+
+	public RDB getRdb() {
+		return rdb;
+	}
+    
+    
 	
 }

@@ -14,6 +14,10 @@ performanceConfig:
   tcpRcvBuf: 65536
   useEpoll: false
   pooledByteBufAllocatorEnable: false
+  popSize: 100 #单节点从分布式存储查询消息数量
+  popInterval: 1000 # 单节点发送消息到客户端时间间隔
+  clientSize: 10000 # 最大单节点连接客户端数量
+  queueSize: 50000 # 线程池队列数量
 # 0 rocksdb 2 RheaKV
 storeType: 0 
 rocksDbPath: store/rocksdb_test/

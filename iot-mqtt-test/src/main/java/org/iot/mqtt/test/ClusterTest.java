@@ -26,17 +26,13 @@ import ch.qos.logback.core.joran.spi.JoranException;
  * @date 2020-07-13
  */
 public class ClusterTest {
-	public static String[] serverPath = new String[] {
-			"src/main/resources/cluster/server1.yaml",
-			"src/main/resources/cluster/server2.yaml",
-			"src/main/resources/cluster/server3.yaml" };
 	public static void main(String[] args) throws Exception {
-		for (int i = 0; i < serverPath.length; i++) {
+		for (int i = 0; i < BaseTest.serverPath.length; i++) {
 			final int num = i;
 			new Thread(new Runnable(){  
 	            public void run(){  
 	            	try {
-						BrokerStartup.start(serverPath[num]);
+						BrokerStartup.start(BaseTest.serverPath[num]);
 					} catch (JoranException e) {
 						e.printStackTrace();
 					}

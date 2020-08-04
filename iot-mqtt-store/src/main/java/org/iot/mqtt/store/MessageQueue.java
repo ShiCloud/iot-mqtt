@@ -14,16 +14,19 @@
  * You may elect to redistribute this code under either of these licenses.
  */
 
-package org.iot.mqtt.test;
+package org.iot.mqtt.store;
 
-import org.iot.mqtt.broker.BrokerStartup;
+import java.util.Collection;
+
+import org.iot.mqtt.common.bean.Message;
 
 /**
  * @author cloudshi 14768909@qq.com
- * @date 2020-07-16
+ * @date 2020-08-04
  */
-public class ServerTest {
-	public static void main(String[] args) throws Exception {
-		BrokerStartup.start("src/main/resources/broker.yaml");
-	}
+public interface MessageQueue {
+	
+	public boolean offer(Message message);
+	
+	public Collection<Message> pop(int nums);
 }

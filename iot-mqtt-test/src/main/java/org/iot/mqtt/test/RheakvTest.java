@@ -38,13 +38,7 @@ import com.alipay.sofa.jraft.rhea.options.RheaKVStoreOptions;
  * @author cloudshi 14768909@qq.com
  * @date 2020-07-13
  */
-public class RheakvTest extends BaseTest {
-
-	private static String[] serverPath = new String[] { 
-			"src/main/resources/cluster/server1.yaml",
-			"src/main/resources/cluster/server2.yaml", 
-			"src/main/resources/cluster/server3.yaml" 
-			};
+public class RheakvTest {
 
 	public static RheakvTest test = new RheakvTest();
 	public static AtomicInteger WCOUNT = new AtomicInteger(1);
@@ -55,11 +49,11 @@ public class RheakvTest extends BaseTest {
 		List<Node> servers = new ArrayList<>();
 		List<RheaKVStore> clients = new ArrayList<>();
 		Map<Integer,RheaKVStore> stores = new ConcurrentHashMap<>();
-		for (int i = 0; i < serverPath.length; i++) {
+		for (int i = 0; i < BaseTest.serverPath.length; i++) {
 			final int num = i;
 			new Thread(new Runnable(){  
 	            public void run(){  
-	            	Node node = RheakvUtils.initServer(Yaml.readConfig(serverPath[num], RheaKVStoreOptions.class));
+	            	Node node = RheakvUtils.initServer(Yaml.readConfig(BaseTest.serverPath[num], RheaKVStoreOptions.class));
             		servers.add(node);
             		RheaKVStore rheaKVStore = node.getRheaKVStore();
             		clients.add(rheaKVStore);
@@ -69,7 +63,7 @@ public class RheakvTest extends BaseTest {
 		}
 		Thread.sleep(5000);
 		final int msgNums = 5000;
-		for (int i = 0; i < serverPath.length; i++) {
+		for (int i = 0; i < BaseTest.serverPath.length; i++) {
 			final int num = i;
 			final String clientId = "store"+num;
 			new Thread(new Runnable(){  
